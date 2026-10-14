@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=devide-width,initial-scale=1.0">
+        <title>Campus Life Planner</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+
+
+        <header class="banner">
+            <div>
+                <h1>
+                    Campus Life Planner
+                </h1>
+                <p id="greeting">Hello!</p>
+            </div>
+            <div class="clock-box">
+                <div id="clock">00:00:00</div>
+                <div id="today-date">Today</div>
+            </div>
+        </header>
+
+        <main class="container">
+
+            <section class="stats">
+                <div class="stats"><span id="stat-tasks">0</span><small>Tasks left</small></div>
+                <div class="stats"><span id="stat-events">0</span><small>Upcoming events</small></div>
+                <div class="stats"><span id="stat-deadlines">0</span><small>Deadlines</small></div>
+            </section>
+
+            <div class="grid">
+
+
+                <section class="card">
+                    <h2> Tasks</h2>
+                    <form id="task-form" class="form">
+                        <input type="text" id="task-input" placeholder="e.g.Finish math homework" required>
+                        <select id="task-priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected> Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                        <button type="submit">Add</button>
+                    </form>
+                    <ul id="task-list" class="list"></ul>
+                </section>
+
+
+                <section class="card">
+                    <h2> Event</h2>
+                    <form id="event-form" class="form">
+                        <input type="text" id="event-input" placeholder="e.g. Club meeting" required>
+                        <input type="date" id="event-date" required>
+                        <input type="time" id="event-time">
+                        <button type="submit">Add</button>
+                    </form>
+                    <ul id="event-list" class="list"></ul>
+                </section>
+
+
+
+                <section class="card">
+                    <h2> Deadlines</h2>
+                    <form id="deadline-form" class="form">
+                        <input type="text" id="deadline-input" placeholder="e.g.Essay submission" required>
+                        <input type="date" id="deadline-date" required>
+                        <button type="submit">Add</button>
+                    </form>
+                    <ul id="deadline-list" class="list"></ul>
+                </section>
+
+
+                <section class="card">
+                    <h2> Stusy Timer</h2>
+                    <p class="hint">Focus for 25 minutes, then take a break.</p>
+                    <div id="timer-buttons">
+                        <button id="timer-start">Start</button>
+                        <button id="timer-pause" class="secondary">Pause</button>
+                        <button id="timer-reset" class="secondary">Reset</button>
+                    </div>
+                </section>
+
+
+            </div>
+        </main>
+
+        <footer>Made for busy students Your data is saved on this device.</footer>
+
+        <script scr="script.js"></script>
+    </body>
+</html>
