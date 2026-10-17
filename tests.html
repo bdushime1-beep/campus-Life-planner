@@ -13,7 +13,7 @@
     }
     .test-table th, .test-table td {
       padding: 0.65rem;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-main, #e2e8f0);
       font-size: 0.85rem;
       text-align: left;
     }
@@ -24,11 +24,11 @@
 <body>
   <div class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h1>Regex &amp; Form Validation Test Suite</h1>
+      <h1 class="panel-title" style="font-size: 1.35rem;">Regex &amp; Form Validation Test Suite</h1>
       <a href="index.html" class="btn btn-secondary">&larr; Back to Planner</a>
     </div>
 
-    <div class="card">
+    <div class="panel">
       <div id="testSummary" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem;">
         Running automated test assertions...
       </div>
@@ -52,28 +52,30 @@
     </div>
   </div>
 
-  <script type="module">
-    import { regexRules, validateField } from './scripts/validators.js';
-    import { compileRegex } from './scripts/search.js';
+  <script src="scripts/validators.js"></script>
+  <script src="scripts/search.js"></script>
+  <script>
+    const { regexRules, validateField } = window.AppValidators || {};
+    const { compileRegex } = window.AppSearch || {};
 
     const testCases = [
-      // 1. Title Validation
+      // 1. Title validation
       { rule: 'Title (Valid)', input: 'Physics Lab Report', fn: () => validateField('title', 'Physics Lab Report'), expected: '' },
       { rule: 'Title (Leading Space)', input: '  Math Homework', fn: () => validateField('title', '  Math Homework'), expected: 'Title cannot start or end with spaces.' },
       { rule: 'Title (Trailing Space)', input: 'Chemistry Quiz ', fn: () => validateField('title', 'Chemistry Quiz '), expected: 'Title cannot start or end with spaces.' },
 
-      // 2. Numeric Duration Validation
+      // 2.  Numeric Duration validation
       { rule: 'Duration (Valid Integer)', input: '60', fn: () => validateField('duration', '60'), expected: '' },
       { rule: 'Duration (Valid Decimal)', input: '45.5', fn: () => validateField('duration', '45.5'), expected: '' },
       { rule: 'Duration (Zero Rejected)', input: '0', fn: () => validateField('duration', '0'), expected: 'Enter a valid positive number for duration.' },
       { rule: 'Duration (Letters Rejected)', input: 'abc', fn: () => validateField('duration', 'abc'), expected: 'Enter a valid positive number for duration.' },
 
-      // 3. Due Date Validation (YYYY-MM-DD)
+      // 3. Due date validation (YYYY-MM-DD)
       { rule: 'Date (Valid Format)', input: '2026-10-25', fn: () => validateField('dueDate', '2026-10-25'), expected: '' },
       { rule: 'Date (Invalid Format DD-MM-YYYY)', input: '25-10-2026', fn: () => validateField('dueDate', '25-10-2026'), expected: 'Date must be formatted as YYYY-MM-DD.' },
       { rule: 'Date (Invalid Month)', input: '2026-13-10', fn: () => validateField('dueDate', '2026-13-10'), expected: 'Date must be formatted as YYYY-MM-DD.' },
 
-      // 4. Tag / Category Validation
+      // Tag / category validation
       { rule: 'Tag (Valid Letters & Spaces)', input: 'Campus Life', fn: () => validateField('tag', 'Campus Life'), expected: '' },
       { rule: 'Tag (Valid Hyphen)', input: 'Study-Group', fn: () => validateField('tag', 'Study-Group'), expected: '' },
       { rule: 'Tag (Special Symbols Rejected)', input: 'Academics#1!', fn: () => validateField('tag', 'Academics#1!'), expected: 'Tag can only contain letters, spaces, or hyphens.' },
@@ -82,7 +84,7 @@
       { rule: 'Advanced Regex (Duplicate Word)', input: 'Study Study Session', fn: () => validateField('title', 'Study Study Session'), expected: 'Title contains duplicate consecutive words.' },
       { rule: 'Advanced Regex (Normal Unique Words)', input: 'Study Group Meeting', fn: () => validateField('title', 'Study Group Meeting'), expected: '' },
 
-      // 6. Safe Regex Compiler
+      // 6. Safe Regex compiler
       { rule: 'Safe Compiler (Valid Pattern)', input: '^@tag:Study', fn: () => compileRegex('^@tag:Study') instanceof RegExp, expected: true },
       { rule: 'Safe Compiler (Invalid Pattern)', input: '[unclosed-bracket', fn: () => typeof compileRegex('[unclosed-bracket').error === 'string', expected: true }
     ];

@@ -3,141 +3,179 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Campus Life Planner - Responsive, accessible task and event organizer with regex validation and search.">
-  <title>Campus Life Planner</title>
+  <meta name="description" content="Campus Life Planner - A responsive, accessible task and workload organizer for university students with regex search and validation.">
+  <title>Campus Life Planner - Student Productivity</title>
   <link rel="stylesheet" href="styles/style.css">
+  <script>
+    // Hydrate theme before paint to prevent flashing
+    try {
+      var saved = JSON.parse(localStorage.getItem('campus_planner_settings') || '{}');
+      if (saved.theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <!-- Accessible Skip Link -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
-  <!-- Header & Navigation -->
+  <!-- Header -->
   <header class="site-header" role="banner">
-    <div class="container header-inner">
-      <h1 class="site-title">Campus Life Planner</h1>
-      <nav class="site-nav" role="navigation" aria-label="Main Navigation">
-        <a href="#about">About</a>
-        <a href="#dashboard">Dashboard</a>
-        <a href="#tasks">Tasks</a>
-        <a href="#add-task">Add Task</a>
-        <a href="#settings">Settings</a>
-        <a href="tests.html">Run Tests</a>
+    <div class="container">
+      <div class="header-row">
+        <div class="brand-wrap">
+          <h1 class="site-title">Campus Life Planner</h1>
+          <span class="site-subtitle">Student Task &amp; Workload Manager</span>
+        </div>
+        <div class="header-controls">
+          <button type="button" id="themeToggleBtn" class="btn btn-sm btn-outline" aria-label="Toggle color theme">Theme</button>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="site-nav" role="tablist" aria-label="Planner sections">
+        <button type="button" class="nav-tab active" data-tab="dashboard" role="tab" aria-selected="true">Overview</button>
+        <button type="button" class="nav-tab" data-tab="tasks" role="tab" aria-selected="false">Tasks</button>
+        <button type="button" class="nav-tab" data-tab="add-task" role="tab" aria-selected="false">New Task</button>
+        <button type="button" class="nav-tab" data-tab="settings" role="tab" aria-selected="false">Settings</button>
+        <button type="button" class="nav-tab" data-tab="about" role="tab" aria-selected="false">About</button>
+        <button type="button" class="nav-tab" data-tab="all" role="tab" aria-selected="false">View All</button>
+        <a href="tests.html" class="nav-tab nav-tab-test" role="link">Test Suite &rarr;</a>
       </nav>
-      <button id="themeToggleBtn" class="btn btn-sm btn-outline" aria-label="Toggle dark mode">🌙 Dark Mode</button>
     </div>
   </header>
 
-  <!-- Main Content Landmark -->
+  <!-- Main Content -->
   <main id="main-content" class="container" role="main">
 
-    <!-- About Section -->
-    <section id="about" class="card" aria-labelledby="aboutHeading">
-      <h2 id="aboutHeading" class="section-title">About Campus Life Planner</h2>
-      <p>
-        Campus Life Planner is an accessible, client-side productivity web application designed to help university students organize study sessions, assignments, and extracurricular campus activities.
-      </p>
-      <div style="margin-top: 0.75rem; font-size: 0.9rem;">
-        <strong>Author:</strong> B. Dushime &bull;
-        <strong>Email:</strong> <a href="mailto:b.dushime1@alustudent.com">b.dushime1@alustudent.com</a> &bull;
-        <strong>GitHub:</strong> <a href="https://github.com/bdushime1-beep/campus-Life-planner" target="_blank" rel="noopener">bdushime1-beep/campus-Life-planner</a>
+    <!-- Section 1: Dashboard Overview -->
+    <section id="dashboard" class="panel" aria-labelledby="overviewHeading">
+      <div class="panel-header">
+        <div>
+          <h2 id="overviewHeading" class="panel-title">Workload Overview</h2>
+          <p class="panel-desc">Summary of planned tasks, hours, and weekly study cadence</p>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" onclick="window.App?.switchTab('tasks');">View Task List &rarr;</button>
       </div>
-    </section>
 
-    <!-- Dashboard & Stats Section -->
-    <section id="dashboard" class="card" aria-labelledby="dashboardHeading">
-      <h2 id="dashboardHeading" class="section-title">Dashboard &amp; Statistics</h2>
-
-      <div class="stats-grid">
-        <div class="stat-item">
+      <!-- Quick Metrics Strip -->
+      <div class="stats-strip">
+        <div class="stat-box">
           <div class="stat-label">Total Tasks</div>
-          <div id="statTotalTasks" class="stat-value">0</div>
+          <div id="statTotalTasks" class="stat-num">0</div>
         </div>
-        <div class="stat-item">
-          <div class="stat-label">Total Planned Time</div>
-          <div id="statTotalDuration" class="stat-value">0 mins</div>
+        <div class="stat-box">
+          <div class="stat-label">Total Time Planned</div>
+          <div id="statTotalDuration" class="stat-num">0 mins</div>
         </div>
-        <div class="stat-item">
-          <div class="stat-label">Top Category</div>
-          <div id="statTopTag" class="stat-value">None</div>
-        </div>
-      </div>
-
-      <!-- 7-Day Trend Bar Chart -->
-      <div class="chart-container">
-        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">7-Day Workload Trend (Planned Minutes)</h3>
-        <div id="trendBars" class="chart-bars" role="region" aria-label="Workload distribution chart for the last 7 days">
-          <!-- Filled dynamically via app.js -->
+        <div class="stat-box">
+          <div class="stat-label">Primary Focus</div>
+          <div id="statTopTag" class="stat-num" style="font-size: 1.25rem;">None</div>
         </div>
       </div>
 
-      <!-- ARIA Live Region for Daily Cap Status -->
-      <div id="capStatusAlert" role="status" aria-live="polite" class="cap-alert cap-ok">
-        Loading workload metrics...
+      <!-- 7-Day Trend Chart -->
+      <div class="chart-box">
+        <div class="chart-header">
+          <span class="chart-title">7-Day Workload Distribution</span>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Minutes scheduled per day</span>
+        </div>
+        <div id="trendBars" class="chart-bars-wrap" role="region" aria-label="7-day distribution of study minutes">
+          <!-- Populated dynamically via app.js -->
+        </div>
+      </div>
+
+      <!-- Daily Cap Status Alert -->
+      <div id="capStatusAlert" role="status" aria-live="polite" class="cap-status cap-ok">
+        Calculating workload metrics...
       </div>
     </section>
 
-    <!-- Scheduled Tasks Table / Cards -->
-    <section id="tasks" class="card" aria-labelledby="tasksHeading">
-      <h2 id="tasksHeading" class="section-title">Scheduled Tasks</h2>
+    <!-- Section 2: Tasks & Search -->
+    <section id="tasks" class="panel" aria-labelledby="tasksHeading" hidden>
+      <div class="panel-header">
+        <div>
+          <h2 id="tasksHeading" class="panel-title">Scheduled Tasks</h2>
+          <p class="panel-desc">Manage, search, and sort campus commitments</p>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" onclick="window.App?.switchTab('add-task');">+ New Task</button>
+      </div>
 
-      <!-- Live Regex Search Controls -->
-      <div class="search-bar">
-        <div class="search-input-wrap">
-          <label for="searchInput" class="sr-only" style="position: absolute; width: 1px; height: 1px; overflow: hidden;">Search tasks with regex</label>
+      <!-- Filter & Search Toolbar -->
+      <div class="search-toolbar">
+        <div class="search-input-group">
           <input
             type="search"
             id="searchInput"
-            class="form-input"
-            style="width: 100%;"
-            placeholder="Search with regex (e.g. ^@tag:Academics or \bstudy\b)..."
+            class="search-field"
+            placeholder="Search by title, tag, or regex pattern (e.g. \bstudy\b, ^@tag:Academics)..."
+            aria-label="Filter tasks by text or regex"
             aria-describedby="searchError"
           >
+          <button type="button" id="clearSearchBtn" class="btn btn-sm btn-secondary">Clear</button>
         </div>
-        <div class="search-options">
+
+        <div class="filter-chips-row">
+          <span class="chips-title">Filter by Category:</span>
+          <button type="button" class="filter-chip active" data-filter="all">All</button>
+          <button type="button" class="filter-chip" data-filter="Academics">Academics</button>
+          <button type="button" class="filter-chip" data-filter="Fitness">Fitness</button>
+          <button type="button" class="filter-chip" data-filter="Club">Club</button>
+          <button type="button" class="filter-chip" data-filter="Career">Career</button>
+        </div>
+
+        <div class="search-meta-row">
           <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer;">
             <input type="checkbox" id="caseToggle" checked>
-            <span>Case-Insensitive</span>
+            <span>Case-insensitive regex matching</span>
           </label>
+          <span id="searchMatchBadge" class="search-badge">10 tasks</span>
         </div>
-      </div>
-      <div id="searchError" class="form-error" role="alert" aria-live="polite"></div>
 
-      <!-- Table View (transforms into cards on mobile) -->
+        <div id="searchError" class="form-error" role="alert" aria-live="polite"></div>
+      </div>
+
+      <!-- Tasks Table (Transforms to Cards on Mobile) -->
       <div class="table-wrap">
-        <table class="tasks-table" aria-label="Tasks List">
+        <table class="tasks-table" aria-label="List of campus tasks">
           <thead>
             <tr>
-              <th data-sort="title" scope="col">Title <span class="sort-icon">↕</span></th>
-              <th data-sort="tag" scope="col">Tag <span class="sort-icon">↕</span></th>
+              <th data-sort="title" scope="col">Task Description <span class="sort-icon">↕</span></th>
+              <th data-sort="tag" scope="col">Category <span class="sort-icon">↕</span></th>
               <th data-sort="dueDate" scope="col">Due Date <span class="sort-icon">↕</span></th>
               <th data-sort="duration" scope="col">Duration <span class="sort-icon">↕</span></th>
-              <th scope="col">Actions</th>
+              <th scope="col" style="text-align: right;">Actions</th>
             </tr>
           </thead>
           <tbody id="tasksContainer">
-            <!-- Dynamic rows rendered by app.js -->
+            <!-- Dynamic rows populated by app.js -->
           </tbody>
         </table>
-        <div id="emptyState" class="empty-state" hidden>
-          <p>No matching tasks found. Add a task below or adjust your search filter.</p>
+        <div id="emptyState" class="empty-box" hidden>
+          <p>No matching tasks found. Adjust your search query or add a new task.</p>
         </div>
       </div>
     </section>
 
-    <!-- Add / Edit Task Form -->
-    <section id="add-task" class="card" aria-labelledby="formHeading">
-      <h2 id="formHeading" class="section-title">Add New Task</h2>
+    <!-- Section 3: Add / Edit Form -->
+    <section id="add-task" class="panel" aria-labelledby="formHeading" hidden>
+      <div class="panel-header">
+        <div>
+          <h2 id="formHeading" class="panel-title">Add New Task</h2>
+          <p class="panel-desc">All fields are validated in real-time with regular expressions</p>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline" onclick="window.App?.switchTab('tasks');">&larr; Back to Tasks</button>
+      </div>
 
       <form id="taskForm" novalidate>
         <div class="form-grid">
-          <div class="form-group form-group-full">
+          <div class="form-group form-col-span-2">
             <label for="title" class="form-label">Task Title / Description</label>
             <input
               type="text"
               id="title"
               name="title"
               class="form-input"
-              placeholder="e.g., Physics Lab Assignment 2"
+              placeholder="e.g. Computer Science Problem Set 3"
               required
               aria-describedby="titleError"
             >
@@ -145,13 +183,13 @@
           </div>
 
           <div class="form-group">
-            <label for="duration" class="form-label">Estimated Duration (minutes)</label>
+            <label for="duration" class="form-label">Duration (minutes)</label>
             <input
               type="number"
               id="duration"
               name="duration"
               class="form-input"
-              placeholder="e.g., 90"
+              placeholder="e.g. 90"
               min="1"
               step="any"
               required
@@ -161,7 +199,7 @@
           </div>
 
           <div class="form-group">
-            <label for="dueDate" class="form-label">Target Due Date</label>
+            <label for="dueDate" class="form-label">Target Date (YYYY-MM-DD)</label>
             <input
               type="date"
               id="dueDate"
@@ -173,14 +211,14 @@
             <span id="dueDateError" class="form-error" aria-live="polite"></span>
           </div>
 
-          <div class="form-group form-group-full">
+          <div class="form-group form-col-span-2">
             <label for="tag" class="form-label">Category / Tag</label>
             <input
               type="text"
               id="tag"
               name="tag"
               class="form-input"
-              placeholder="e.g., Academics, Fitness, Club, Career"
+              placeholder="e.g. Academics, Fitness, Club, Career"
               required
               aria-describedby="tagError"
             >
@@ -189,32 +227,37 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" id="submitTaskBtn" class="btn btn-primary">Add Task</button>
+          <button type="submit" id="submitTaskBtn" class="btn btn-primary">Save Task</button>
           <button type="button" id="cancelEditBtn" class="btn btn-secondary" hidden>Cancel Edit</button>
         </div>
       </form>
     </section>
 
-    <!-- Settings Section -->
-    <section id="settings" class="card" aria-labelledby="settingsHeading">
-      <h2 id="settingsHeading" class="section-title">Planner Settings</h2>
+    <!-- Section 4: Settings -->
+    <section id="settings" class="panel" aria-labelledby="settingsHeading" hidden>
+      <div class="panel-header">
+        <div>
+          <h2 id="settingsHeading" class="panel-title">Planner Preferences</h2>
+          <p class="panel-desc">Configure display units, daily study target, and data backup</p>
+        </div>
+      </div>
 
-      <div class="settings-list">
-        <div class="setting-row">
-          <div>
-            <strong>Display Duration Units</strong>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Switch between displaying durations in minutes or hours.</p>
+      <div class="settings-group">
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Duration Display Units</h4>
+            <p>Choose whether task durations are displayed in minutes or converted to hours.</p>
           </div>
-          <select id="timeUnitSelect" class="form-select" style="max-width: 150px;" aria-label="Select display time unit">
-            <option value="minutes">Minutes</option>
-            <option value="hours">Hours</option>
+          <select id="timeUnitSelect" class="form-select" style="max-width: 150px;" aria-label="Display duration units">
+            <option value="minutes">Minutes (e.g. 90m)</option>
+            <option value="hours">Hours (e.g. 1.5h)</option>
           </select>
         </div>
 
-        <div class="setting-row">
-          <div>
-            <strong>Daily Target Cap (Minutes)</strong>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Max daily study/activity limit before ARIA overage warning triggers.</p>
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Daily Workload Target (Minutes)</h4>
+            <p>Set maximum scheduled minutes per day before workload alert triggers.</p>
           </div>
           <input
             type="number"
@@ -223,24 +266,50 @@
             style="max-width: 150px;"
             min="30"
             step="15"
-            value="180"
-            aria-label="Daily cap in minutes"
+            value="240"
+            aria-label="Daily target cap in minutes"
           >
         </div>
 
-        <div class="setting-row">
-          <div>
-            <strong>Data Backup &amp; Restore</strong>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Export your tasks as a JSON backup or import an existing file.</p>
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Data Backup &amp; Migration</h4>
+            <p>Export your planner data to a JSON backup file or import previous tasks.</p>
           </div>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button id="exportJsonBtn" class="btn btn-sm btn-outline">Export JSON</button>
-            <label class="btn btn-sm btn-outline" style="cursor: pointer;">
+            <button type="button" id="exportJsonBtn" class="btn btn-sm btn-outline">Export JSON</button>
+            <label class="btn btn-sm btn-outline" style="cursor: pointer; margin: 0;">
               Import JSON
               <input type="file" id="importFileInput" accept=".json" style="display: none;">
             </label>
-            <button id="loadSeedBtn" class="btn btn-sm btn-outline">Reload Seed Data</button>
+            <button type="button" id="loadSeedBtn" class="btn btn-sm btn-outline">Reset to Seed Data</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: About -->
+    <section id="about" class="panel" aria-labelledby="aboutHeading" hidden>
+      <div class="panel-header">
+        <div>
+          <h2 id="aboutHeading" class="panel-title">About this Project</h2>
+          <p class="panel-desc">Summative Assignment - Building Responsive UI</p>
+        </div>
+      </div>
+
+      <div style="font-size: 0.92rem; line-height: 1.65; color: var(--text-secondary); max-width: 720px;">
+        <p style="margin-bottom: 0.75rem;">
+          Campus Life Planner is an accessible, client-side web application designed to help university students organize academic deadlines, physical wellness, club projects, and career preparation.
+        </p>
+        <p style="margin-bottom: 1.25rem;">
+          The app features custom regex input validation, safe dynamic search with match highlighting, mobile-first responsive design, localStorage persistence, and accessible keyboard navigation.
+        </p>
+
+        <div style="padding: 1rem 1.25rem; background: var(--bg-subtle); border: 1px solid var(--border-main); border-radius: var(--radius-sm); font-size: 0.88rem;">
+          <div style="margin-bottom: 0.25rem;"><strong>Student Author:</strong> B. Dushime</div>
+          <div style="margin-bottom: 0.25rem;"><strong>Institutional Email:</strong> <a href="mailto:b.dushime1@alustudent.com" style="color: var(--brand);">b.dushime1@alustudent.com</a></div>
+          <div style="margin-bottom: 0.25rem;"><strong>GitHub Repository:</strong> <a href="https://github.com/bdushime1-beep/campus-Life-planner" target="_blank" rel="noopener" style="color: var(--brand);">bdushime1-beep/campus-Life-planner</a></div>
+          <div><strong>Architecture:</strong> Vanilla HTML5, Vanilla CSS3, Modular JavaScript (IIFE pattern), localStorage API.</div>
         </div>
       </div>
     </section>
@@ -250,11 +319,14 @@
   <!-- Footer -->
   <footer class="site-footer" role="contentinfo">
     <div class="container">
-      <p>&copy; 2026 Campus Life Planner &bull; Built with vanilla HTML, CSS, and JavaScript.</p>
+      <p>&copy; 2026 Campus Life Planner &bull; Authored by B. Dushime &bull; Vanilla HTML, CSS, JavaScript</p>
     </div>
   </footer>
 
-  <!-- Scripts -->
-  <script type="module" src="scripts/app.js"></script>
+  <!-- Scripts loaded in dependency order (Universal offline & web execution) -->
+  <script src="scripts/validators.js"></script>
+  <script src="scripts/search.js"></script>
+  <script src="scripts/storage.js"></script>
+  <script src="scripts/app.js"></script>
 </body>
 </html>

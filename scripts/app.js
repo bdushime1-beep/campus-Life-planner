@@ -1,512 +1,687 @@
-// Main application logic for Campus Life Planner
+// Campus Life Planner - Main Application Logic
+(function (global) {
+  'use strict';
 
-import { validateTask, validateField } from './validators.js';
-import { compileRegex, matchTask, highlightMatch } from './search.js';
-import {
-  loadTasks,
-  saveTasks,
-  loadSettings,
-  saveSettings,
-  exportTasksToJson,
-  validateImportedTasks
-} from './storage.js';
+  // Dependency extraction from universal namespaces
+  const { validateTask, validateField } = global.AppValidators || {};
+  const { compileRegex, matchTask, highlightMatch } = global.AppSearch || {};
+  const {
+    loadTasks,
+    saveTasks,
+    loadSettings,
+    saveSettings,
+    exportTasksToJson,
+    validateImportedTasks,
+    DEFAULT_SEEDS
+  } = global.AppStorage || {};
 
-// Application state
-let tasks = [];
-let settings = loadSettings();
-let sortField = 'dueDate';
-let sortDirection = 'asc';
-let searchQuery = '';
-let caseInsensitive = true;
-let editingTaskId = null;
+  // Application State
+  let tasks = [];
+  let settings = (loadSettings && loadSettings()) || { timeUnit: 'minutes', dailyCap: 240, theme: 'light' };
+  let sortField = 'dueDate';
+  let sortDirection = 'asc';
+  let searchQuery = '';
+  let activeTagFilter = 'all';
+  let caseInsensitive = true;
+  let editingTaskId = null;
+  let currentTab = 'dashboard';
 
-// DOM references
-const taskForm = document.getElementById('taskForm');
-const formHeading = document.getElementById('formHeading');
-const cancelEditBtn = document.getElementById('cancelEditBtn');
-const submitTaskBtn = document.getElementById('submitTaskBtn');
-const tasksContainer = document.getElementById('tasksContainer');
-const emptyState = document.getElementById('emptyState');
-const searchInput = document.getElementById('searchInput');
-const searchError = document.getElementById('searchError');
-const caseToggle = document.getElementById('caseToggle');
-const timeUnitSelect = document.getElementById('timeUnitSelect');
-const dailyCapInput = document.getElementById('dailyCapInput');
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-const exportJsonBtn = document.getElementById('exportJsonBtn');
-const importFileInput = document.getElementById('importFileInput');
-const loadSeedBtn = document.getElementById('loadSeedBtn');
-const capStatusAlert = document.getElementById('capStatusAlert');
+  // DOM Elements
+  const taskForm = document.getElementById('taskForm');
+  const formHeading = document.getElementById('formHeading');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const submitTaskBtn = document.getElementById('submitTaskBtn');
+  const tasksContainer = document.getElementById('tasksContainer');
+  const emptyState = document.getElementById('emptyState');
+  const searchInput = document.getElementById('searchInput');
+  const searchError = document.getElementById('searchError');
+  const searchMatchBadge = document.getElementById('searchMatchBadge');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  const caseToggle = document.getElementById('caseToggle');
+  const timeUnitSelect = document.getElementById('timeUnitSelect');
+  const dailyCapInput = document.getElementById('dailyCapInput');
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const exportJsonBtn = document.getElementById('exportJsonBtn');
+  const importFileInput = document.getElementById('importFileInput');
+  const loadSeedBtn = document.getElementById('loadSeedBtn');
+  const capStatusAlert = document.getElementById('capStatusAlert');
 
-// Initial setup
-async function init() {
+  // Immediately apply theme to root
   applyTheme(settings.theme);
 
-  // Load stored tasks or fetch seed data if empty
-  tasks = loadTasks();
-  if (tasks.length === 0) {
-    await loadInitialSeed();
-  }
+  // Tab View Switching
+  function switchTab(tabId) {
+    currentTab = tabId;
+    const allSections = ['dashboard', 'tasks', 'add-task', 'settings', 'about'];
+    const navButtons = document.querySelectorAll('.site-nav [data-tab]');
 
-  // Set initial settings inputs
-  if (timeUnitSelect) timeUnitSelect.value = settings.timeUnit;
-  if (dailyCapInput) dailyCapInput.value = settings.dailyCap;
+    navButtons.forEach(btn => {
+      const id = btn.getAttribute('data-tab');
+      if (id === tabId) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      }
+    });
 
-  setupEventListeners();
-  renderApp();
-}
-
-// Fetch seed.json if first time running
-async function loadInitialSeed() {
-  try {
-    const res = await fetch('./seed.json');
-    if (res.ok) {
-      const seedData = await res.json();
-      tasks = seedData;
-      saveTasks(tasks);
+    if (tabId === 'all') {
+      allSections.forEach(id => {
+        const sec = document.getElementById(id);
+        if (sec) sec.hidden = false;
+      });
+      return;
     }
-  } catch (err) {
-    console.log('No seed.json found or fetch failed, starting empty.', err);
-  }
-}
 
-// Attach all UI event listeners
-function setupEventListeners() {
-  // Real-time input validation on form fields
-  ['title', 'duration', 'dueDate', 'tag'].forEach(field => {
-    const input = document.getElementById(field);
-    if (input) {
-      input.addEventListener('input', () => {
-        const err = validateField(field, input.value);
-        showFieldError(field, err);
+    allSections.forEach(id => {
+      const sec = document.getElementById(id);
+      if (sec) {
+        sec.hidden = id !== tabId;
+      }
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // App Initialization
+  function init() {
+    applyTheme(settings.theme);
+
+    // Load tasks (auto populates with DEFAULT_SEEDS if storage was empty)
+    tasks = (loadTasks && loadTasks()) || (DEFAULT_SEEDS ? [...DEFAULT_SEEDS] : []);
+
+    // Sync input controls with loaded settings
+    if (timeUnitSelect) timeUnitSelect.value = settings.timeUnit;
+    if (dailyCapInput) dailyCapInput.value = settings.dailyCap;
+
+    bindEvents();
+
+    // Route view from hash if present, otherwise default to overview
+    const hash = (window.location.hash || '').replace('#', '');
+    if (['dashboard', 'tasks', 'add-task', 'settings', 'about', 'all'].includes(hash)) {
+      switchTab(hash);
+    } else {
+      switchTab('dashboard');
+    }
+
+    renderApp();
+  }
+
+  // Event Listeners Binding
+  function bindEvents() {
+    // Navigation Tab Clicks
+    document.querySelectorAll('.site-nav [data-tab]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        const tab = btn.getAttribute('data-tab');
+        switchTab(tab);
+        window.location.hash = '#' + tab;
+      });
+    });
+
+    // Real-time Field Validation
+    ['title', 'duration', 'dueDate', 'tag'].forEach(field => {
+      const input = document.getElementById(field);
+      if (input) {
+        input.addEventListener('input', () => {
+          const err = validateField ? validateField(field, input.value) : '';
+          setFieldError(field, err);
+        });
+      }
+    });
+
+    // Form Submit
+    if (taskForm) {
+      taskForm.addEventListener('submit', handleFormSubmit);
+    }
+
+    // Cancel Edit
+    if (cancelEditBtn) {
+      cancelEditBtn.addEventListener('click', resetForm);
+    }
+
+    // Search Input
+    if (searchInput) {
+      searchInput.addEventListener('input', e => {
+        searchQuery = e.target.value;
+        renderTasks();
       });
     }
-  });
 
-  // Task form submit (Add or Edit)
-  taskForm.addEventListener('submit', handleFormSubmit);
-
-  // Cancel edit button
-  cancelEditBtn.addEventListener('click', resetForm);
-
-  // Live regex search input
-  searchInput.addEventListener('input', e => {
-    searchQuery = e.target.value;
-    renderTasks();
-  });
-
-  // Case insensitive checkbox toggle
-  caseToggle.addEventListener('change', e => {
-    caseInsensitive = e.target.checked;
-    renderTasks();
-  });
-
-  // Table header sorting
-  document.querySelectorAll('[data-sort]').forEach(header => {
-    header.addEventListener('click', () => {
-      const field = header.getAttribute('data-sort');
-      if (sortField === field) {
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortField = field;
-        sortDirection = 'asc';
-      }
-      updateSortIndicators();
-      renderTasks();
-    });
-  });
-
-  // Settings: Unit conversion (minutes <-> hours)
-  timeUnitSelect.addEventListener('change', e => {
-    settings.timeUnit = e.target.value;
-    saveSettings(settings);
-    renderApp();
-  });
-
-  // Settings: Daily duration cap
-  dailyCapInput.addEventListener('change', e => {
-    const val = Number(e.target.value);
-    if (val > 0) {
-      settings.dailyCap = val;
-      saveSettings(settings);
-      renderStats();
+    // Clear Search
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        searchQuery = '';
+        renderTasks();
+        searchInput?.focus();
+      });
     }
-  });
 
-  // Settings: Dark/Light theme toggle
-  themeToggleBtn.addEventListener('click', () => {
-    settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
-    saveSettings(settings);
-    applyTheme(settings.theme);
-  });
-
-  // Settings: Export JSON backup
-  exportJsonBtn.addEventListener('click', () => {
-    exportTasksToJson(tasks);
-  });
-
-  // Settings: Import JSON
-  importFileInput.addEventListener('change', handleJsonImport);
-
-  // Settings: Reload Seed Data
-  loadSeedBtn.addEventListener('click', async () => {
-    if (confirm('Replace current tasks with default campus seed data?')) {
-      await loadInitialSeed();
-      renderApp();
-    }
-  });
-}
-
-// Handle Add / Edit form submission
-function handleFormSubmit(e) {
-  e.preventDefault();
-
-  const taskData = {
-    title: document.getElementById('title').value.trim(),
-    duration: Number(document.getElementById('duration').value),
-    dueDate: document.getElementById('dueDate').value,
-    tag: document.getElementById('tag').value.trim()
-  };
-
-  const validation = validateTask(taskData);
-  if (!validation.isValid) {
-    Object.keys(validation.errors).forEach(field => {
-      showFieldError(field, validation.errors[field]);
+    // Category Filter Chips
+    document.querySelectorAll('[data-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter]').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeTagFilter = chip.getAttribute('data-filter') || 'all';
+        renderTasks();
+      });
     });
-    return;
+
+    // Case Sensitive Toggle
+    if (caseToggle) {
+      caseToggle.addEventListener('change', e => {
+        caseInsensitive = e.target.checked;
+        renderTasks();
+      });
+    }
+
+    // Table Header Sorting
+    document.querySelectorAll('[data-sort]').forEach(header => {
+      header.addEventListener('click', () => {
+        const field = header.getAttribute('data-sort');
+        if (sortField === field) {
+          sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortField = field;
+          sortDirection = 'asc';
+        }
+        updateSortIcons();
+        renderTasks();
+      });
+    });
+
+    // Settings: Unit Toggle
+    if (timeUnitSelect) {
+      timeUnitSelect.addEventListener('change', e => {
+        settings.timeUnit = e.target.value;
+        saveSettings(settings);
+        renderApp();
+      });
+    }
+
+    // Settings: Daily Cap Input
+    if (dailyCapInput) {
+      dailyCapInput.addEventListener('change', e => {
+        const val = Number(e.target.value);
+        if (val > 0) {
+          settings.dailyCap = val;
+          saveSettings(settings);
+          renderStats();
+        }
+      });
+    }
+
+    // Settings: Theme Toggle
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
+        saveSettings(settings);
+        applyTheme(settings.theme);
+      });
+    }
+
+    // Settings: Export JSON
+    if (exportJsonBtn) {
+      exportJsonBtn.addEventListener('click', () => {
+        exportTasksToJson(tasks);
+      });
+    }
+
+    // Settings: Import JSON
+    if (importFileInput) {
+      importFileInput.addEventListener('change', handleImport);
+    }
+
+    // Settings: Reset Seed Data
+    if (loadSeedBtn) {
+      loadSeedBtn.addEventListener('click', () => {
+        if (confirm('Reset planner tasks to original campus seed data?')) {
+          tasks = DEFAULT_SEEDS ? [...DEFAULT_SEEDS] : [];
+          saveTasks(tasks);
+          renderApp();
+        }
+      });
+    }
   }
 
-  const now = new Date().toISOString();
+  // Handle Form Submission
+  function handleFormSubmit(e) {
+    e.preventDefault();
 
-  if (editingTaskId) {
-    // Update existing task
-    const index = tasks.findIndex(t => t.id === editingTaskId);
-    if (index !== -1) {
-      tasks[index] = {
-        ...tasks[index],
-        ...taskData,
+    const titleInput = document.getElementById('title');
+    const durationInput = document.getElementById('duration');
+    const dateInput = document.getElementById('dueDate');
+    const tagInput = document.getElementById('tag');
+
+    const taskData = {
+      title: titleInput ? titleInput.value : '',
+      duration: durationInput ? Number(durationInput.value) : 0,
+      dueDate: dateInput ? dateInput.value : '',
+      tag: tagInput ? tagInput.value : ''
+    };
+
+    const validation = validateTask ? validateTask(taskData) : { isValid: true, errors: {} };
+    if (!validation.isValid) {
+      Object.keys(validation.errors).forEach(f => setFieldError(f, validation.errors[f]));
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    if (editingTaskId) {
+      tasks = tasks.map(t => {
+        if (t.id === editingTaskId) {
+          return {
+            ...t,
+            title: taskData.title.trim(),
+            duration: taskData.duration,
+            dueDate: taskData.dueDate,
+            tag: taskData.tag.trim(),
+            updatedAt: now
+          };
+        }
+        return t;
+      });
+    } else {
+      const newTask = {
+        id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        title: taskData.title.trim(),
+        duration: taskData.duration,
+        dueDate: taskData.dueDate,
+        tag: taskData.tag.trim(),
+        createdAt: now,
         updatedAt: now
       };
+      tasks.unshift(newTask);
     }
-  } else {
-    // Create new task
-    const newTask = {
-      id: 'task_' + Date.now(),
-      ...taskData,
-      createdAt: now,
-      updatedAt: now
-    };
-    tasks.unshift(newTask);
-  }
 
-  saveTasks(tasks);
-  resetForm();
-  renderApp();
-}
-
-// Inline edit: load task into form and scroll
-function startEditTask(id) {
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-
-  editingTaskId = id;
-  formHeading.textContent = 'Edit Task';
-  submitTaskBtn.textContent = 'Save Changes';
-  cancelEditBtn.hidden = false;
-
-  document.getElementById('title').value = task.title;
-  document.getElementById('duration').value = task.duration;
-  document.getElementById('dueDate').value = task.dueDate;
-  document.getElementById('tag').value = task.tag;
-
-  clearAllErrors();
-  taskForm.scrollIntoView({ behavior: 'smooth' });
-}
-
-// Delete task with confirmation
-function deleteTask(id) {
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-
-  if (confirm(`Delete "${task.title}"?`)) {
-    tasks = tasks.filter(t => t.id !== id);
     saveTasks(tasks);
-    if (editingTaskId === id) resetForm();
+    resetForm();
     renderApp();
+
+    switchTab('tasks');
+    window.location.hash = '#tasks';
   }
-}
 
-// Reset form to clean add mode
-function resetForm() {
-  editingTaskId = null;
-  formHeading.textContent = 'Add New Task';
-  submitTaskBtn.textContent = 'Add Task';
-  cancelEditBtn.hidden = true;
-  taskForm.reset();
-  clearAllErrors();
-}
-
-function showFieldError(field, message) {
-  const errEl = document.getElementById(field + 'Error');
-  if (errEl) {
-    errEl.textContent = message || '';
-  }
-}
-
-function clearAllErrors() {
-  ['title', 'duration', 'dueDate', 'tag'].forEach(field => {
-    showFieldError(field, '');
-  });
-}
-
-// Filter and sort tasks
-function getFilteredAndSortedTasks() {
-  let result = [...tasks];
-
-  // Regex Search filtering
-  if (searchQuery.trim()) {
-    const compiled = compileRegex(searchQuery, caseInsensitive);
-    if (compiled && compiled.error) {
-      searchError.textContent = 'Invalid regex: ' + compiled.error;
-    } else {
-      searchError.textContent = '';
-      result = result.filter(task => matchTask(task, compiled, searchQuery));
+  // Validation Error Display
+  function setFieldError(field, msg) {
+    const errEl = document.getElementById(field + 'Error');
+    const inputEl = document.getElementById(field);
+    if (errEl) errEl.textContent = msg || '';
+    if (inputEl) {
+      if (msg) {
+        inputEl.setAttribute('aria-invalid', 'true');
+      } else {
+        inputEl.removeAttribute('aria-invalid');
+      }
     }
-  } else {
-    searchError.textContent = '';
   }
 
-  // Sorting
-  result.sort((a, b) => {
-    let valA = a[sortField];
-    let valB = b[sortField];
+  function clearAllErrors() {
+    ['title', 'duration', 'dueDate', 'tag'].forEach(f => setFieldError(f, ''));
+  }
 
-    if (sortField === 'duration') {
-      valA = Number(valA);
-      valB = Number(valB);
-    } else {
-      valA = String(valA || '').toLowerCase();
-      valB = String(valB || '').toLowerCase();
+  function resetForm() {
+    editingTaskId = null;
+    if (taskForm) taskForm.reset();
+    clearAllErrors();
+    if (formHeading) formHeading.textContent = 'Add New Task';
+    if (submitTaskBtn) submitTaskBtn.textContent = 'Save Task';
+    if (cancelEditBtn) cancelEditBtn.hidden = true;
+  }
+
+  function startEdit(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    editingTaskId = id;
+    document.getElementById('title').value = task.title;
+    document.getElementById('duration').value = task.duration;
+    document.getElementById('dueDate').value = task.dueDate;
+    document.getElementById('tag').value = task.tag;
+
+    clearAllErrors();
+    if (formHeading) formHeading.textContent = 'Edit Task';
+    if (submitTaskBtn) submitTaskBtn.textContent = 'Update Task';
+    if (cancelEditBtn) cancelEditBtn.hidden = false;
+
+    switchTab('add-task');
+    window.location.hash = '#add-task';
+    document.getElementById('title')?.focus();
+  }
+
+  function removeTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    if (confirm(`Delete "${task.title}"?`)) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveTasks(tasks);
+      if (editingTaskId === id) resetForm();
+      renderApp();
+    }
+  }
+
+  // Duration Formatter
+  function formatDuration(mins) {
+    const m = Number(mins) || 0;
+    if (settings.timeUnit === 'hours') {
+      const h = (m / 60).toFixed(1);
+      return `${h} hrs`;
+    }
+    return `${m} mins`;
+  }
+
+  // Date Formatter
+  function formatDate(dStr) {
+    if (!dStr) return '';
+    try {
+      const [y, m, d] = dStr.split('-');
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return dStr;
+    }
+  }
+
+  // Tag Styling Helper
+  function getTagColorClass(tag) {
+    const c = (tag || '').toLowerCase();
+    if (c.includes('acad') || c.includes('study')) return 'tag-blue';
+    if (c.includes('fit') || c.includes('gym')) return 'tag-green';
+    if (c.includes('club') || c.includes('event')) return 'tag-purple';
+    if (c.includes('career') || c.includes('work')) return 'tag-orange';
+    return 'tag-gray';
+  }
+
+  // Filter & Sort Pipeline
+  function getFilteredTasks() {
+    let list = [...tasks];
+
+    // 1. Tag Chip Filter
+    if (activeTagFilter !== 'all') {
+      list = list.filter(t => (t.tag || '').toLowerCase() === activeTagFilter.toLowerCase());
     }
 
-    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
+    // 2. Search / Regex Filter
+    if (searchQuery.trim()) {
+      const compiled = compileRegex ? compileRegex(searchQuery, caseInsensitive) : null;
+      if (compiled && compiled.error) {
+        if (searchError) searchError.textContent = `Regex Error: ${compiled.error}`;
+        return [];
+      } else {
+        if (searchError) searchError.textContent = '';
+      }
 
-  return result;
-}
+      if (compiled) {
+        list = list.filter(t => (matchTask ? matchTask(t, compiled, searchQuery) : true));
+      }
+    } else {
+      if (searchError) searchError.textContent = '';
+    }
 
-// Render the tasks table on desktop, cards on mobile
-function renderTasks() {
-  const displayTasks = getFilteredAndSortedTasks();
-  const compiled = compileRegex(searchQuery, caseInsensitive);
+    // 3. Sorting
+    list.sort((a, b) => {
+      let vA = a[sortField];
+      let vB = b[sortField];
 
-  if (displayTasks.length === 0) {
-    tasksContainer.innerHTML = '';
-    emptyState.hidden = false;
-    return;
+      if (sortField === 'duration') {
+        vA = Number(vA) || 0;
+        vB = Number(vB) || 0;
+      } else {
+        vA = String(vA || '').toLowerCase();
+        vB = String(vB || '').toLowerCase();
+      }
+
+      if (vA < vB) return sortDirection === 'asc' ? -1 : 1;
+      if (vA > vB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
   }
 
-  emptyState.hidden = true;
+  // Render Table / Cards
+  function renderTasks() {
+    if (!tasksContainer) return;
 
-  const rowsHtml = displayTasks
-    .map(task => {
-      const displayTitle = highlightMatch(task.title, compiled);
-      const displayTag = highlightMatch(task.tag, compiled);
-      const displayDuration = formatDuration(task.duration);
+    const filtered = getFilteredTasks();
+    const compiled = searchQuery.trim() && compileRegex ? compileRegex(searchQuery, caseInsensitive) : null;
+    const isRegexValid = compiled && !compiled.error;
 
-      return `
-        <tr class="task-row">
-          <td data-label="Task Title" class="font-medium">${displayTitle}</td>
-          <td data-label="Tag"><span class="badge tag-${getBadgeColor(task.tag)}">${displayTag}</span></td>
-          <td data-label="Due Date">${task.dueDate}</td>
-          <td data-label="Duration">${displayDuration}</td>
-          <td data-label="Actions" class="actions-cell">
-            <button class="btn-sm btn-outline edit-btn" data-id="${task.id}" aria-label="Edit ${task.title}">Edit</button>
-            <button class="btn-sm btn-danger delete-btn" data-id="${task.id}" aria-label="Delete ${task.title}">Delete</button>
-          </td>
-        </tr>
-      `;
-    })
-    .join('');
+    // Update match count badge
+    if (searchMatchBadge) {
+      if (searchQuery.trim() || activeTagFilter !== 'all') {
+        searchMatchBadge.textContent = `${filtered.length} of ${tasks.length} tasks`;
+      } else {
+        searchMatchBadge.textContent = `${tasks.length} tasks`;
+      }
+    }
 
-  tasksContainer.innerHTML = rowsHtml;
+    if (filtered.length === 0) {
+      tasksContainer.innerHTML = '';
+      if (emptyState) emptyState.hidden = false;
+      return;
+    }
 
-  // Attach row action listeners
-  tasksContainer.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => startEditTask(btn.getAttribute('data-id')));
-  });
+    if (emptyState) emptyState.hidden = true;
 
-  tasksContainer.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => deleteTask(btn.getAttribute('data-id')));
-  });
-}
+    tasksContainer.innerHTML = filtered
+      .map(task => {
+        const safeTitle = isRegexValid && highlightMatch ? highlightMatch(task.title, compiled) : escapeHtml(task.title);
+        const safeTag = isRegexValid && highlightMatch ? highlightMatch(task.tag, compiled) : escapeHtml(task.tag);
+        const safeDate = formatDate(task.dueDate);
+        const safeDuration = formatDuration(task.duration);
+        const tagClass = getTagColorClass(task.tag);
 
-// Render summary stats and the 7-day trend chart
-function renderStats() {
-  const totalTasksEl = document.getElementById('statTotalTasks');
-  const totalDurationEl = document.getElementById('statTotalDuration');
-  const topTagEl = document.getElementById('statTopTag');
-  const trendBarsEl = document.getElementById('trendBars');
+        return `
+          <tr class="task-row" data-id="${task.id}">
+            <td data-label="Task Description" style="font-weight: 600;">${safeTitle}</td>
+            <td data-label="Category"><span class="badge ${tagClass}">${safeTag}</span></td>
+            <td data-label="Due Date">${safeDate}</td>
+            <td data-label="Duration">${safeDuration}</td>
+            <td data-label="Actions" class="actions-cell" style="text-align: right;">
+              <button type="button" class="btn btn-sm btn-outline edit-btn" data-id="${task.id}" aria-label="Edit task ${task.title}">Edit</button>
+              <button type="button" class="btn btn-sm btn-danger delete-btn" data-id="${task.id}" aria-label="Delete task ${task.title}">Delete</button>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
 
-  // Total count
-  totalTasksEl.textContent = tasks.length;
+    // Attach row events
+    tasksContainer.querySelectorAll('.edit-btn').forEach(b => {
+      b.addEventListener('click', () => startEdit(b.getAttribute('data-id')));
+    });
 
-  // Total duration (converted if hours selected)
-  const totalMins = tasks.reduce((sum, t) => sum + (Number(t.duration) || 0), 0);
-  totalDurationEl.textContent = formatDuration(totalMins);
+    tasksContainer.querySelectorAll('.delete-btn').forEach(b => {
+      b.addEventListener('click', () => removeTask(b.getAttribute('data-id')));
+    });
+  }
 
-  // Top tag
-  if (tasks.length === 0) {
-    topTagEl.textContent = 'None';
-  } else {
+  // HTML Escape Utility
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Render Stats & Trend Chart
+  function renderStats() {
+    const totalTasksEl = document.getElementById('statTotalTasks');
+    const totalDurationEl = document.getElementById('statTotalDuration');
+    const topTagEl = document.getElementById('statTopTag');
+    const trendBarsEl = document.getElementById('trendBars');
+
+    if (!totalTasksEl || !totalDurationEl || !topTagEl) return;
+
+    const totalCount = tasks.length;
+    const totalMins = tasks.reduce((sum, t) => sum + (Number(t.duration) || 0), 0);
+
+    totalTasksEl.textContent = totalCount;
+    totalDurationEl.textContent = formatDuration(totalMins);
+
+    // Primary Category calculation
     const tagCounts = {};
     tasks.forEach(t => {
-      tagCounts[t.tag] = (tagCounts[t.tag] || 0) + 1;
+      const tg = t.tag || 'General';
+      tagCounts[tg] = (tagCounts[tg] || 0) + 1;
     });
-    const sortedTags = Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
-    topTagEl.textContent = sortedTags[0] + ` (${tagCounts[sortedTags[0]]})`;
-  }
 
-  // 7-day trend chart (past 7 days including today)
-  const days = [];
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
+    let topTag = 'None';
+    let max = 0;
+    Object.keys(tagCounts).forEach(tg => {
+      if (tagCounts[tg] > max) {
+        max = tagCounts[tg];
+        topTag = tg;
+      }
+    });
+    topTagEl.textContent = totalCount > 0 ? `${topTag} (${max})` : 'None';
 
-  const dailyTotals = days.map(dateStr => {
-    const sum = tasks
-      .filter(t => t.dueDate === dateStr)
-      .reduce((s, t) => s + (Number(t.duration) || 0), 0);
-    return { date: dateStr, minutes: sum };
-  });
-
-  const maxDayMinutes = Math.max(...dailyTotals.map(d => d.minutes), 60);
-
-  trendBarsEl.innerHTML = dailyTotals
-    .map(d => {
-      const heightPercent = Math.round((d.minutes / maxDayMinutes) * 100);
-      const dayLabel = d.date.slice(5); // MM-DD
-      return `
-        <div class="chart-col" title="${d.date}: ${d.minutes} mins">
-          <div class="bar-fill" style="height: ${Math.max(heightPercent, 4)}%"></div>
-          <span class="bar-label">${dayLabel}</span>
-        </div>
-      `;
-    })
-    .join('');
-
-  // Daily cap status and ARIA live announcement
-  const todayStr = today.toISOString().split('T')[0];
-  const todayMinutes = tasks
-    .filter(t => t.dueDate === todayStr)
-    .reduce((s, t) => s + (Number(t.duration) || 0), 0);
-
-  const cap = Number(settings.dailyCap) || 180;
-  if (todayMinutes > cap) {
-    const over = todayMinutes - cap;
-    capStatusAlert.setAttribute('aria-live', 'assertive');
-    capStatusAlert.className = 'cap-alert cap-exceeded';
-    capStatusAlert.textContent = `Warning: Today's planned workload (${todayMinutes}m) exceeds daily cap by ${over}m!`;
-  } else {
-    const remaining = cap - todayMinutes;
-    capStatusAlert.setAttribute('aria-live', 'polite');
-    capStatusAlert.className = 'cap-alert cap-ok';
-    capStatusAlert.textContent = `Today: ${todayMinutes}m planned. ${remaining}m remaining under daily cap of ${cap}m.`;
-  }
-}
-
-// Helper: Format duration based on timeUnit setting
-function formatDuration(minutes) {
-  const mins = Number(minutes) || 0;
-  if (settings.timeUnit === 'hours') {
-    const hrs = (mins / 60).toFixed(1);
-    return `${hrs} hrs`;
-  }
-  return `${mins} mins`;
-}
-
-// Helper: Map tags to color classes
-function getBadgeColor(tag) {
-  const clean = (tag || '').toLowerCase();
-  if (clean.includes('academic') || clean.includes('study')) return 'blue';
-  if (clean.includes('fit') || clean.includes('gym')) return 'green';
-  if (clean.includes('club') || clean.includes('event')) return 'purple';
-  if (clean.includes('career') || clean.includes('work')) return 'orange';
-  return 'gray';
-}
-
-// Update sorting indicator icons in table header
-function updateSortIndicators() {
-  document.querySelectorAll('[data-sort]').forEach(th => {
-    const field = th.getAttribute('data-sort');
-    const icon = th.querySelector('.sort-icon');
-    if (field === sortField) {
-      icon.textContent = sortDirection === 'asc' ? ' ↑' : ' ↓';
-    } else {
-      icon.textContent = ' ↕';
-    }
-  });
-}
-
-// Theme applier
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  if (themeToggleBtn) {
-    themeToggleBtn.textContent = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-  }
-}
-
-// Handle JSON file import
-function handleJsonImport(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = event => {
-    try {
-      const parsed = JSON.parse(event.target.result);
-      const validation = validateImportedTasks(parsed);
-
-      if (!validation.valid) {
-        alert('Import Error: ' + validation.message);
-        return;
+    // 7-Day Trend Bars
+    if (trendBarsEl) {
+      const days = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        days.push(d.toISOString().split('T')[0]);
       }
 
-      if (confirm(`Import ${parsed.length} tasks? This will merge with existing tasks.`)) {
-        // Merge without duplicating existing IDs
-        const existingIds = new Set(tasks.map(t => t.id));
-        const newTasks = parsed.map((t, idx) => ({
-          ...t,
-          id: t.id && !existingIds.has(t.id) ? t.id : 'task_imp_' + Date.now() + '_' + idx,
-          createdAt: t.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
+      const dayMins = {};
+      days.forEach(d => (dayMins[d] = 0));
 
-        tasks = [...newTasks, ...tasks];
-        saveTasks(tasks);
-        renderApp();
-        alert(`Successfully imported ${newTasks.length} tasks!`);
-      }
-    } catch (err) {
-      alert('Invalid JSON file format. ' + err.message);
+      tasks.forEach(t => {
+        if (t.dueDate && dayMins[t.dueDate] !== undefined) {
+          dayMins[t.dueDate] += Number(t.duration) || 0;
+        }
+      });
+
+      const maxDay = Math.max(...Object.values(dayMins), 60);
+
+      trendBarsEl.innerHTML = days
+        .map(dayStr => {
+          const m = dayMins[dayStr] || 0;
+          const pct = Math.round((m / maxDay) * 100);
+          const label = new Date(dayStr).toLocaleDateString(undefined, { weekday: 'narrow' });
+
+          return `
+            <div class="chart-col" title="${dayStr}: ${m} mins planned">
+              <div class="bar-fill" style="height: ${Math.max(pct, 4)}%;"></div>
+              <span class="bar-label">${label}</span>
+            </div>
+          `;
+        })
+        .join('');
     }
-    importFileInput.value = '';
+
+    // Daily Cap Status Check
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayMins = tasks
+      .filter(t => t.dueDate === todayStr)
+      .reduce((sum, t) => sum + (Number(t.duration) || 0), 0);
+
+    if (capStatusAlert) {
+      const cap = Number(settings.dailyCap) || 240;
+      if (todayMins > cap) {
+        capStatusAlert.className = 'cap-status cap-exceeded';
+        capStatusAlert.innerHTML = `⚠️ <strong>Daily Target Exceeded:</strong> Today has ${formatDuration(todayMins)} scheduled, which exceeds your target limit of ${formatDuration(cap)}.`;
+      } else {
+        capStatusAlert.className = 'cap-status cap-ok';
+        capStatusAlert.innerHTML = `✓ <strong>Daily Schedule on Track:</strong> Today has ${formatDuration(todayMins)} scheduled (Target limit: ${formatDuration(cap)}).`;
+      }
+    }
+  }
+
+  // Sort Icons Update
+  function updateSortIcons() {
+    document.querySelectorAll('[data-sort]').forEach(header => {
+      const f = header.getAttribute('data-sort');
+      const icon = header.querySelector('.sort-icon');
+      if (!icon) return;
+      if (f === sortField) {
+        icon.textContent = sortDirection === 'asc' ? ' ↑' : ' ↓';
+      } else {
+        icon.textContent = ' ↕';
+      }
+    });
+  }
+
+  // Theme Applier
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+    }
+  }
+
+  // JSON Import Handler
+  function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        const val = validateImportedTasks ? validateImportedTasks(parsed) : { valid: true };
+
+        if (!val.valid) {
+          alert('Import Error: ' + val.message);
+          return;
+        }
+
+        if (confirm(`Import ${parsed.length} tasks from file?`)) {
+          const existingIds = new Set(tasks.map(t => t.id));
+          const newItems = parsed.map((t, i) => ({
+            ...t,
+            id: t.id && !existingIds.has(t.id) ? t.id : 'task_imp_' + Date.now() + '_' + i,
+            createdAt: t.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }));
+          tasks = [...newItems, ...tasks];
+          saveTasks(tasks);
+          renderApp();
+          alert(`Successfully imported ${newItems.length} tasks.`);
+        }
+      } catch (err) {
+        alert('Invalid JSON file format: ' + err.message);
+      }
+      importFileInput.value = '';
+    };
+
+    reader.readAsText(file);
+  }
+
+  // Master Render
+  function renderApp() {
+    renderTasks();
+    renderStats();
+    updateSortIcons();
+  }
+
+  // Public Interface on window.App
+  global.App = {
+    init,
+    switchTab,
+    renderApp
   };
 
-  reader.readAsText(file);
-}
-
-// Full re-render helper
-function renderApp() {
-  renderTasks();
-  renderStats();
-  updateSortIndicators();
-}
-
-// Start app on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', init);
+  // Safe DOM ready execution
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
