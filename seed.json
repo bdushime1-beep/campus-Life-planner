@@ -1,0 +1,92 @@
+[
+  {
+    "id": "task_seed_01",
+    "title": "Computer Science Problem Set 3",
+    "duration": 120,
+    "dueDate": "2026-10-17",
+    "tag": "Academics",
+    "createdAt": "2026-10-15T09:00:00.000Z",
+    "updatedAt": "2026-10-15T09:00:00.000Z"
+  },
+  {
+    "id": "task_seed_02",
+    "title": "Morning Gym Cardio Session",
+    "duration": 45,
+    "dueDate": "2026-10-17",
+    "tag": "Fitness",
+    "createdAt": "2026-10-16T07:30:00.000Z",
+    "updatedAt": "2026-10-16T07:30:00.000Z"
+  },
+  {
+    "id": "task_seed_03",
+    "title": "Robotics Club Weekly Sprint",
+    "duration": 90,
+    "dueDate": "2026-10-18",
+    "tag": "Club",
+    "createdAt": "2026-10-14T14:15:00.000Z",
+    "updatedAt": "2026-10-14T14:15:00.000Z"
+  },
+  {
+    "id": "task_seed_04",
+    "title": "Campus Library Research Reading",
+    "duration": 60,
+    "dueDate": "2026-10-18",
+    "tag": "Academics",
+    "createdAt": "2026-10-16T11:00:00.000Z",
+    "updatedAt": "2026-10-16T11:00:00.000Z"
+  },
+  {
+    "id": "task_seed_05",
+    "title": "Resume Review with Career Advisor",
+    "duration": 30,
+    "dueDate": "2026-10-19",
+    "tag": "Career",
+    "createdAt": "2026-10-15T16:45:00.000Z",
+    "updatedAt": "2026-10-15T16:45:00.000Z"
+  },
+  {
+    "id": "task_seed_06",
+    "title": "Data Structures Midterm Prep",
+    "duration": 150,
+    "dueDate": "2026-10-19",
+    "tag": "Academics",
+    "createdAt": "2026-10-13T10:20:00.000Z",
+    "updatedAt": "2026-10-13T10:20:00.000Z"
+  },
+  {
+    "id": "task_seed_07",
+    "title": "Intramural Basketball Match",
+    "duration": 75,
+    "dueDate": "2026-10-20",
+    "tag": "Fitness",
+    "createdAt": "2026-10-16T18:00:00.000Z",
+    "updatedAt": "2026-10-16T18:00:00.000Z"
+  },
+  {
+    "id": "task_seed_08",
+    "title": "Student Union Budget Meeting",
+    "duration": 60,
+    "dueDate": "2026-10-21",
+    "tag": "Club",
+    "createdAt": "2026-10-14T15:30:00.000Z",
+    "updatedAt": "2026-10-14T15:30:00.000Z"
+  },
+  {
+    "id": "task_seed_09",
+    "title": "Web Development Final Project Polish",
+    "duration": 180,
+    "dueDate": "2026-10-22",
+    "tag": "Academics",
+    "createdAt": "2026-10-15T20:00:00.000Z",
+    "updatedAt": "2026-10-15T20:00:00.000Z"
+  },
+  {
+    "id": "task_seed_10",
+    "title": "Campus Peer Mentoring Session",
+    "duration": 45,
+    "dueDate": "2026-10-23",
+    "tag": "Career",
+    "createdAt": "2026-10-16T13:00:00.000Z",
+    "updatedAt": "2026-10-16T13:00:00.000Z"
+  }
+]
