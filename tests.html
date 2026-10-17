@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation &amp; Regex Test Suite - Campus Life Planner</title>
+  <link rel="stylesheet" href="styles/style.css">
+  <style>
+    .test-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .test-table th, .test-table td {
+      padding: 0.65rem;
+      border: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .badge-pass { background-color: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+    .badge-fail { background-color: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h1>Regex &amp; Form Validation Test Suite</h1>
+      <a href="index.html" class="btn btn-secondary">&larr; Back to Planner</a>
+    </div>
+
+    <div class="card">
+      <div id="testSummary" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem;">
+        Running automated test assertions...
+      </div>
+
+      <div class="table-wrap">
+        <table class="test-table">
+          <thead>
+            <tr>
+              <th>Rule Tested</th>
+              <th>Sample Input</th>
+              <th>Expected</th>
+              <th>Result</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="testResultsBody">
+            <!-- Populated via script -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { regexRules, validateField } from './scripts/validators.js';
+    import { compileRegex } from './scripts/search.js';
+
+    const testCases = [
+      // 1. Title Validation
+      { rule: 'Title (Valid)', input: 'Physics Lab Report', fn: () => validateField('title', 'Physics Lab Report'), expected: '' },
+      { rule: 'Title (Leading Space)', input: '  Math Homework', fn: () => validateField('title', '  Math Homework'), expected: 'Title cannot start or end with spaces.' },
+      { rule: 'Title (Trailing Space)', input: 'Chemistry Quiz ', fn: () => validateField('title', 'Chemistry Quiz '), expected: 'Title cannot start or end with spaces.' },
+
+      // 2. Numeric Duration Validation
+      { rule: 'Duration (Valid Integer)', input: '60', fn: () => validateField('duration', '60'), expected: '' },
+      { rule: 'Duration (Valid Decimal)', input: '45.5', fn: () => validateField('duration', '45.5'), expected: '' },
+      { rule: 'Duration (Zero Rejected)', input: '0', fn: () => validateField('duration', '0'), expected: 'Enter a valid positive number for duration.' },
+      { rule: 'Duration (Letters Rejected)', input: 'abc', fn: () => validateField('duration', 'abc'), expected: 'Enter a valid positive number for duration.' },
+
+      // 3. Due Date Validation (YYYY-MM-DD)
+      { rule: 'Date (Valid Format)', input: '2026-10-25', fn: () => validateField('dueDate', '2026-10-25'), expected: '' },
+      { rule: 'Date (Invalid Format DD-MM-YYYY)', input: '25-10-2026', fn: () => validateField('dueDate', '25-10-2026'), expected: 'Date must be formatted as YYYY-MM-DD.' },
+      { rule: 'Date (Invalid Month)', input: '2026-13-10', fn: () => validateField('dueDate', '2026-13-10'), expected: 'Date must be formatted as YYYY-MM-DD.' },
+
+      // 4. Tag / Category Validation
+      { rule: 'Tag (Valid Letters & Spaces)', input: 'Campus Life', fn: () => validateField('tag', 'Campus Life'), expected: '' },
+      { rule: 'Tag (Valid Hyphen)', input: 'Study-Group', fn: () => validateField('tag', 'Study-Group'), expected: '' },
+      { rule: 'Tag (Special Symbols Rejected)', input: 'Academics#1!', fn: () => validateField('tag', 'Academics#1!'), expected: 'Tag can only contain letters, spaces, or hyphens.' },
+
+      // 5. Advanced Regex (Duplicate words detection)
+      { rule: 'Advanced Regex (Duplicate Word)', input: 'Study Study Session', fn: () => validateField('title', 'Study Study Session'), expected: 'Title contains duplicate consecutive words.' },
+      { rule: 'Advanced Regex (Normal Unique Words)', input: 'Study Group Meeting', fn: () => validateField('title', 'Study Group Meeting'), expected: '' },
+
+      // 6. Safe Regex Compiler
+      { rule: 'Safe Compiler (Valid Pattern)', input: '^@tag:Study', fn: () => compileRegex('^@tag:Study') instanceof RegExp, expected: true },
+      { rule: 'Safe Compiler (Invalid Pattern)', input: '[unclosed-bracket', fn: () => typeof compileRegex('[unclosed-bracket').error === 'string', expected: true }
+    ];
+
+    let passedCount = 0;
+    const tbody = document.getElementById('testResultsBody');
+
+    tbody.innerHTML = testCases.map(tc => {
+      const actual = tc.fn();
+      const passed = actual === tc.expected;
+      if (passed) passedCount++;
+
+      return `
+        <tr>
+          <td><strong>${tc.rule}</strong></td>
+          <td><code>${tc.input}</code></td>
+          <td>${tc.expected === '' ? '<em>(Valid - No Error)</em>' : tc.expected}</td>
+          <td>${actual === '' ? '<em>(Valid - No Error)</em>' : actual}</td>
+          <td><span class="${passed ? 'badge-pass' : 'badge-fail'}">${passed ? 'PASS' : 'FAIL'}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+    const summaryEl = document.getElementById('testSummary');
+    summaryEl.textContent = `Test Results: ${passedCount} / ${testCases.length} tests passed successfully!`;
+    summaryEl.style.color = passedCount === testCases.length ? '#15803d' : '#b91c1c';
+  </script>
+</body>
+</html>
