@@ -3,8 +3,27 @@
 A responsive, accessible web application for university students to track daily study tasks, campus activities, deadlines, and time budgets.
 
 **Live Demo (GitHub Pages):** [https://bdushime1-beep.github.io/campus-Life-planner/](https://bdushime1-beep.github.io/campus-Life-planner/)  
+**Video Walkthrough (Demo):** [https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4](https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4)  
 **Repository:** [https://github.com/bdushime1-beep/campus-Life-planner](https://github.com/bdushime1-beep/campus-Life-planner)  
 **Author:** B. Dushime (`b.dushime1@alustudent.com`)
+
+---
+
+## Demo Video Walkthrough
+
+A comprehensive video walkthrough demonstrating all rubric milestones:
+* **Direct Video Link:** [Watch Demo Video (demo.mp4)](https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4)
+* **What is demonstrated:**
+  1. Accessible skip link and keyboard navigation.
+  2. Dark and light color theme toggle.
+  3. Workload overview metrics and 7-day trend chart.
+  4. Real-time regex search with `<mark>` match highlighting and safe syntax error handling.
+  5. Category filter chips (`All`, `Academics`, `Fitness`, `Club`, `Career`).
+  6. Task creation, inline editing, and deletion.
+  7. Form regex validation (whitespace trimming, positive duration, and duplicate word detection).
+  8. Settings configuration (duration units, daily study target cap, and JSON backup/restore).
+  9. Mobile-first responsive card transformation.
+  10. Automated test suite execution (`tests.html` 17/17 assertions passing).
 
 ---
 
