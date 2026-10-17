@@ -1,0 +1,20 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node / dependencies
+node_modules/
+npm-debug.log*
+
+# CodeVibe temporary artifacts
+*.tmp
+*.log
+codevibe-verify.js
+PREVIOUS_SESSION_HISTORY.md
