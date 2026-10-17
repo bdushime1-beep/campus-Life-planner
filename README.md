@@ -3,7 +3,7 @@
 A responsive, accessible web application for university students to track daily study tasks, campus activities, deadlines, and time budgets.
 
 **Live Demo (GitHub Pages):** [https://bdushime1-beep.github.io/campus-Life-planner/](https://bdushime1-beep.github.io/campus-Life-planner/)  
-**Video Walkthrough (Demo):** [https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4](https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4)  
+**Video Walkthrough (YouTube Demo):** [https://youtu.be/lmke9fixWjY](https://youtu.be/lmke9fixWjY)  
 **Repository:** [https://github.com/bdushime1-beep/campus-Life-planner](https://github.com/bdushime1-beep/campus-Life-planner)  
 **Author:** B. Dushime (`b.dushime1@alustudent.com`)
 
@@ -12,7 +12,8 @@ A responsive, accessible web application for university students to track daily 
 ## Demo Video Walkthrough
 
 A comprehensive video walkthrough demonstrating all rubric milestones:
-* **Direct Video Link:** [Watch Demo Video (demo.mp4)](https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4)
+* **Video Link (YouTube):** [Watch Demo Walkthrough on YouTube](https://youtu.be/lmke9fixWjY)
+* **Direct File Mirror:** [Download demo.mp4 from GitHub Releases](https://github.com/bdushime1-beep/campus-Life-planner/releases/download/v1.0.0/demo.mp4)
 * **What is demonstrated:**
   1. Accessible skip link and keyboard navigation.
   2. Dark and light color theme toggle.
